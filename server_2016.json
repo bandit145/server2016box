@@ -1,0 +1,65 @@
+{
+	"builders":[
+		{
+			"type": "virtualbox-iso",
+			"guest_os_type":"Windows2016_64",
+			"vboxmanage":[
+				["modifyvm","{{.Name}}","--memory", "2048"],
+				["modifyvm","{{.Name}}","--vram", "48"],
+				["modifyvm","{{.Name}}","--cpus","2"]
+			],
+			"iso_url": "{{user `iso_url`}}",
+			"iso_checksum": "{{user `iso_checksum`}}",
+			"iso_checksum_type": "md5",
+			"guest_additions_mode":"disable",
+			"communicator":"winrm",
+			"winrm_username": "vagrant",
+      		"winrm_password": "vagrant",
+			"winrm_timeout": "12h",
+			"shutdown_command": "A:/packer_shutdown.bat",
+			"headless":true,
+			"shutdown_timeout":"12h",
+			"floppy_files": [
+				"AutoUnattend.xml",
+				"sysprep.xml",
+				"scripts/winrm.ps1",
+				"scripts/packer_shutdown.bat",
+				"scripts/SetupComplete.cmd",
+				"configs/sec_conf.cfg"
+			]
+		}
+	],
+	"provisioners":[
+		{
+			"type":"powershell",
+			"inline":["iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"]
+		},
+		{
+			"type":"powershell",
+			"script":"scripts/provision.ps1",
+			"elevated_user":"vagrant",
+			"elevated_password":"vagrant"
+		}
+	],
+	"post-processors":[
+		[
+			{
+				"type":"vagrant",
+				"keep_input_artifact":false,
+				"output":"server_2016.box",
+				"vagrantfile_template":"vagrantfile-windows.template"
+			},
+			{
+				"type":"vagrant-cloud",
+				"box_tag":"bandit145/server_2016",
+				"access_token": "{{user `api_key`}}",
+				"version": "1.{{timestamp}}"
+			}
+		]
+	],
+	"variables":{
+		"iso_checksum":"18a4f00a675b0338f3c7c93c4f131beb",
+		"iso_url": "http://care.dlservice.microsoft.com/dl/download/1/6/F/16FA20E6-4662-482A-920B-1A45CF5AAE3C/14393.0.160715-1616.RS1_RELEASE_SERVER_EVAL_X64FRE_EN-US.ISO",
+		"api_key":"{{env `vagrant_cloud_key`}}"
+	}
+}
